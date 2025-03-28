@@ -114,6 +114,75 @@
 </div>
 
     {% if bills.total > 0 %}
+
+        <!-- Filter Toggle Button -->
+        <button id="toggle-filters" class="btn btn-secondary">Show Filters</button>
+
+        <!-- Filter Bar (Initially Hidden) -->
+        <div id="bill-search" style="display: none; margin-top: 10px;">
+            <form class="form-inline mt-2">
+                <div class="form-group mr-sm-2">
+                    <label for="filter-type" class="mr-sm-2">Select Filter</label>
+                    <select id="filter-type" class="form-control custom-select">
+                        <option value="">-- Select --</option>
+                        <option value="date">Date Range</option>
+                        <option value="payer">Payer</option>
+                        <option value="amount">Amount Range</option>
+                    </select>
+                </div>
+
+                <!-- Date Range Filter -->
+                <div id="date-filter" class="form-group mr-sm-2 filter-option" style="display: none;">
+                    <label for="date-from" class="mr-sm-2">From</label>
+                    <input type="date" id="date-from" class="form-control">
+                    <label for="date-to" class="mr-sm-2 ml-2">To</label>
+                    <input type="date" id="date-to" class="form-control">
+                </div>
+
+                <!-- Payer Filter -->
+                <div id="payer-filter" class="form-group mr-sm-2 filter-option" style="display: none;">
+                    <label for="payer-select" class="mr-sm-2">Payer</label>
+                    {{ bill_form.payer(id="payer-select", class="form-control custom-select") | safe }}
+                </div>
+
+                <!-- Amount Range Filter -->
+                <div id="amount-filter" class="form-group mr-sm-2 filter-option" style="display: none;">
+                    <label for="amount-min" class="mr-sm-2">Min</label>
+                    <input type="number" id="amount-min" class="form-control" style="width: 100px;">
+                    <label for="amount-max" class="mr-sm-2 ml-2">Max</label>
+                    <input type="number" id="amount-max" class="form-control" style="width: 100px;">
+                </div>
+
+                <div class="form-group">
+                    <button id="btn-bill-filter" type="button" class="btn btn-secondary mr-sm-2">Apply Filter</button>
+                    <button id="btn-bill-showall" type="button" class="btn btn-secondary">Clear Filter</button>
+                </div>
+            </form>
+        </div>
+
+        <script>
+        document.getElementById('toggle-filters').addEventListener('click', function() {
+            const filterDiv = document.getElementById('bill-search');
+            if (filterDiv.style.display === 'none') {
+                filterDiv.style.display = 'block';
+                this.textContent = 'Hide Filters';
+            } else {
+                filterDiv.style.display = 'none';
+                this.textContent = 'Show Filters';
+            }
+        });
+
+        document.getElementById('filter-type').addEventListener('change', function() {
+            document.querySelectorAll('.filter-option').forEach(el => el.style.display = 'none');
+
+            const selectedFilter = this.value;
+            if (selectedFilter) {
+                document.getElementById(selectedFilter + '-filter').style.display = 'flex';
+            }
+        });
+        </script>
+
+
         <table id="bill_table" class="col table table-striped table-hover table-responsive-sm">
             <thead>
                 <tr><th>{{ _("When?") }}
