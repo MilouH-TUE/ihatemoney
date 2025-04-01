@@ -1,14 +1,13 @@
 {% extends "sidebar_table_layout.html" %}
 
-{%- macro weighted_bill_amount(bill, weights, currency=bill.original_currency, amount=bill.amount) %} 
-    {{ amount|currency(currency) }} 
-    {%- if weights != 1.0 %} 
-        ({{ _("%(amount)s each", amount=(amount / weights)|currency(currency)) }}) 
-    {%- endif -%} 
+{%- macro weighted_bill_amount(bill, weights, currency=bill.original_currency, amount=bill.amount) %}
+    {{ amount|currency(currency) }}
+    {%- if weights != 1.0 %}
+        ({{ _("%(amount)s each", amount=(amount / weights)|currency(currency)) }})
+    {%- endif -%}
 {% endmacro -%}
 
 {% block title %} - {{ g.project.name }}{% endblock %}
-
 {% block js %}
     {% if add_bill %} $('#new-bill > a').click(); {% endif %}
 
@@ -91,11 +90,19 @@
                         $(this).hide();
                     }
                 });
+            } else if (selectedFilter === "text") {
+                var searchText = $('#text-search').val().toLowerCase();
+                $('#bill_table tbody tr').each(function () {
+                    var forWhat = $(this).find('td:nth-child(3)').text().toLowerCase();
+                    if (!forWhat.includes(searchText)) {
+                        $(this).hide();
+                    }
+                });
             }
         }
     
         // apply filter on change
-        $('#payer-select, #amount-min, #amount-max, #date-from, #date-to').on('input change', applyFilters);
+        $('#payer-select, #amount-min, #amount-max, #date-from, #date-to, #text-search').on('input change', applyFilters);
     
         // clear filters
         $('#btn-bill-showall').click(function () {
@@ -106,7 +113,7 @@
     
         // filter selected
         $('#filter-type').change(function () {
-            $('.filter-option').show();  // This will make all filter sections visible when a filter type is selected
+            $('.filter-option').hide();
             var selectedFilter = $(this).val();
             if (selectedFilter) {
                 $('#' + selectedFilter + '-filter').show();
@@ -186,15 +193,6 @@
 
         <div id="bill-search" style="display: none; padding-top: 10px;">
             <form class="form-inline mt-2">
-                <div class="form-group mr-sm-2">
-                    <label for="filter-type" class="mr-sm-2">Select Filter</label>
-                    <select id="filter-type" class="form-control custom-select">
-                        <option value="">-- Select --</option>
-                        <option value="date">Date Range</option>
-                        <option value="payer">Payer</option>
-                        <option value="amount">Amount Range</option>
-                    </select>
-                </div>
 
                 <div id="date-filter" class="form-group mr-sm-2 filter-option" style="display: none;">
                     <label for="date-from" class="mr-sm-2">From</label>
@@ -213,6 +211,11 @@
                     <input type="number" id="amount-min" class="form-control" style="width: 100px;">
                     <label for="amount-max" class="mr-sm-2 ml-2">Max</label>
                     <input type="number" id="amount-max" class="form-control" style="width: 100px;">
+                </div>
+
+                <div id="text-filter" class="form-group mr-sm-2 filter-option" style="display: none;">
+                    <label for="text-search" class="mr-sm-2">Search</label>
+                    <input type="text" id="text-search" class="form-control" placeholder="Search 'For what'...">
                 </div>
 
                 <div class="form-group">
