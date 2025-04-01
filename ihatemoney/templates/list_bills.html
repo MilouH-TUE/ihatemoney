@@ -105,7 +105,7 @@
         $('#payer-select, #amount-min, #amount-max, #date-from, #date-to, #text-search').on('input change', applyFilters);
     
         // clear filters
-        $('#btn-bill-showall').click(function () {
+        $('#btn-bill-clear').click(function () {
             $('#bill_table tbody tr').show(200);
             $('#filter-type').val("");
             $('.filter-option').hide();
@@ -193,6 +193,16 @@
 
         <div id="bill-search" style="display: none; padding-top: 10px;">
             <form class="form-inline mt-2">
+                <div class="form-group mr-sm-2">
+                    <label for="filter-type" class="mr-sm-2">Select Filter</label>
+                    <select id="filter-type" class="form-control custom-select">
+                        <option value="">-- Select --</option>
+                        <option value="date">Date Range</option>
+                        <option value="payer">Payer</option>
+                        <option value="amount">Amount Range</option>`
+                        <option value="text">Title search</option>
+                    </select>
+                </div>
 
                 <div id="date-filter" class="form-group mr-sm-2 filter-option" style="display: none;">
                     <label for="date-from" class="mr-sm-2">From</label>
@@ -219,7 +229,7 @@
                 </div>
 
                 <div class="form-group">
-                    <button id="btn-bill-showall" type="button" class="btn btn-secondary">Clear Filters</button>
+                    <button id="btn-bill-clear" type="button" class="btn btn-secondary">Clear Filters</button>
                 </div>
             </form>
         </div>
