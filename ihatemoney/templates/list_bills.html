@@ -13,10 +13,10 @@
 
     // focus on first field when adding a bill
     $("#bill-form").on('shown.bs.modal', function(){
-            $(this).find('#what').focus();
+        $(this).find('#what').focus();
     });
 
-    // ask for confirmation before removing an user
+    // ask for confirmation before removing a user
     $('.action.delete').each(function(){
         var link = $(this).find('button');
         link.click(function(){
@@ -47,6 +47,72 @@
     {% include "helpers.js" %}
     confirm_action(".delete-bill", { exclude_classes: "action delete", add_classes: "btn btn-sm" });
 
+    $(document).ready(function () {
+        $('#toggle-filters').click(function () {
+            const filterDiv = $('#bill-search');
+            if (filterDiv.is(':visible')) {
+                filterDiv.hide();
+                $(this).html('▼ Show Filters');
+            } else {
+                filterDiv.show();
+                $(this).html('▲ Hide Filters');
+            }
+        });
+    
+        function applyFilters() {
+            $('#bill_table tbody tr').show();
+            var selectedFilter = $('#filter-type').val();
+    
+            if (selectedFilter === "payer") {
+                var payerValue = $('#payer-select').val();
+                if (payerValue) {
+                    $('#bill_table tbody tr').each(function () {
+                        if ($(this).attr('payer') !== payerValue) {
+                            $(this).hide();
+                        }
+                    });
+                }
+            } else if (selectedFilter === "amount") {
+                var minAmount = parseFloat($('#amount-min').val()) || 0;
+                var maxAmount = parseFloat($('#amount-max').val()) || Infinity;
+                $('#bill_table tbody tr').each(function () {
+                    var rowAmount = parseFloat($(this).attr('amount')) || 0;
+                    if (rowAmount < minAmount || rowAmount > maxAmount) {
+                        $(this).hide();
+                    }
+                });
+            } else if (selectedFilter === "date") {
+                var fromDate = new Date($('#date-from').val());
+                var toDate = new Date($('#date-to').val());
+                $('#bill_table tbody tr').each(function () {
+                    var rowDate = new Date($(this).attr('date'));
+                    if (rowDate < fromDate || rowDate > toDate) {
+                        $(this).hide();
+                    }
+                });
+            }
+        }
+    
+        // apply filter on change
+        $('#payer-select, #amount-min, #amount-max, #date-from, #date-to').on('input change', applyFilters);
+    
+        // clear filters
+        $('#btn-bill-showall').click(function () {
+            $('#bill_table tbody tr').show(200);
+            $('#filter-type').val("");
+            $('.filter-option').hide();
+        });
+    
+        // filter selected
+        $('#filter-type').change(function () {
+            $('.filter-option').hide();
+            var selectedFilter = $(this).val();
+            if (selectedFilter) {
+                $('#' + selectedFilter + '-filter').show();
+            }
+            applyFilters();
+        });
+    });
 {% endblock %}
 
 {% block head %}
@@ -115,11 +181,9 @@
 
     {% if bills.total > 0 %}
 
-        <!-- Filter Toggle Button -->
-        <button id="toggle-filters" class="btn btn-secondary">Show Filters</button>
+        <div id="toggle-filters">▼ Show Filters</div>
 
-        <!-- Filter Bar (Initially Hidden) -->
-        <div id="bill-search" style="display: none; margin-top: 10px;">
+        <div id="bill-search" style="display: none; padding-top: 10px;">
             <form class="form-inline mt-2">
                 <div class="form-group mr-sm-2">
                     <label for="filter-type" class="mr-sm-2">Select Filter</label>
@@ -131,7 +195,6 @@
                     </select>
                 </div>
 
-                <!-- Date Range Filter -->
                 <div id="date-filter" class="form-group mr-sm-2 filter-option" style="display: none;">
                     <label for="date-from" class="mr-sm-2">From</label>
                     <input type="date" id="date-from" class="form-control">
@@ -139,13 +202,11 @@
                     <input type="date" id="date-to" class="form-control">
                 </div>
 
-                <!-- Payer Filter -->
                 <div id="payer-filter" class="form-group mr-sm-2 filter-option" style="display: none;">
                     <label for="payer-select" class="mr-sm-2">Payer</label>
                     {{ bill_form.payer(id="payer-select", class="form-control custom-select") | safe }}
                 </div>
 
-                <!-- Amount Range Filter -->
                 <div id="amount-filter" class="form-group mr-sm-2 filter-option" style="display: none;">
                     <label for="amount-min" class="mr-sm-2">Min</label>
                     <input type="number" id="amount-min" class="form-control" style="width: 100px;">
@@ -154,34 +215,10 @@
                 </div>
 
                 <div class="form-group">
-                    <button id="btn-bill-filter" type="button" class="btn btn-secondary mr-sm-2">Apply Filter</button>
-                    <button id="btn-bill-showall" type="button" class="btn btn-secondary">Clear Filter</button>
+                    <button id="btn-bill-showall" type="button" class="btn btn-secondary">Clear Filters</button>
                 </div>
             </form>
         </div>
-
-        <script>
-        document.getElementById('toggle-filters').addEventListener('click', function() {
-            const filterDiv = document.getElementById('bill-search');
-            if (filterDiv.style.display === 'none') {
-                filterDiv.style.display = 'block';
-                this.textContent = 'Hide Filters';
-            } else {
-                filterDiv.style.display = 'none';
-                this.textContent = 'Show Filters';
-            }
-        });
-
-        document.getElementById('filter-type').addEventListener('change', function() {
-            document.querySelectorAll('.filter-option').forEach(el => el.style.display = 'none');
-
-            const selectedFilter = this.value;
-            if (selectedFilter) {
-                document.getElementById(selectedFilter + '-filter').style.display = 'flex';
-            }
-        });
-        </script>
-
 
         <table id="bill_table" class="col table table-striped table-hover table-responsive-sm">
             <thead>
@@ -194,7 +231,11 @@
             </thead>
         <tbody>
         {% for (weights, bill) in bills.items %}
-        <tr owers="{{bill.owers|join(',','id')}}" payer="{{bill.payer.id}}">
+        <tr 
+            owers="{{ bill.owers|join(',','id') }}" 
+            payer="{{ bill.payer.id }}" 
+            date="{{ bill.date }}" 
+            amount="{{ bill.converted_amount }}">
                 <td>
                     <span data-toggle="tooltip" data-placement="top"
                         title="{{ _('Added on %(date)s', date=bill.creation_date|dateformat("long") if bill.creation_date else bill.date|dateformat("long")) }}">
