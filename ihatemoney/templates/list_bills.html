@@ -48,6 +48,13 @@
     confirm_action(".delete-bill", { exclude_classes: "action delete", add_classes: "btn btn-sm" });
 
     $(document).ready(function () {
+        let payerSelect = document.getElementById("payer-select");
+        let blankOption = document.createElement("option");
+        blankOption.value = "";
+        blankOption.textContent = "";
+        payerSelect.insertBefore(blankOption, payerSelect.firstChild);
+        payerSelect.value = "";
+
         $('#toggle-filters').click(function () {
             const filterDiv = $('#bill-search');
             if (filterDiv.is(':visible')) {
@@ -60,64 +67,78 @@
         });
     
         function applyFilters() {
-            $('#bill_table tbody tr').show();
-            var selectedFilter = $('#filter-type').val();
-    
-            if (selectedFilter === "payer") {
-                var payerValue = $('#payer-select').val();
-                if (payerValue) {
-                    $('#bill_table tbody tr').each(function () {
-                        if ($(this).attr('payer') !== payerValue) {
-                            $(this).hide();
-                        }
-                    });
+            $('#bill_table tbody tr').show(); // Show all rows first
+        
+            let payerValue = $('#payer-select').val();
+            let minAmount = parseFloat($('#amount-min').val()) || 0;
+            let maxAmount = parseFloat($('#amount-max').val()) || Infinity;
+            let fromDate = $('#date-from').val() ? new Date($('#date-from').val()) : null;
+            let toDate = $('#date-to').val() ? new Date($('#date-to').val()) : null;
+            let searchText = $('#text-search').val().toLowerCase();
+        
+            $('#bill_table tbody tr').each(function () {
+                let row = $(this);
+                let match = true; // Assume the row matches unless proven otherwise
+        
+                // Payer filter
+                if (payerValue && row.attr('payer') !== payerValue) {
+                    match = false;
                 }
-            } else if (selectedFilter === "amount") {
-                var minAmount = parseFloat($('#amount-min').val()) || 0;
-                var maxAmount = parseFloat($('#amount-max').val()) || Infinity;
-                $('#bill_table tbody tr').each(function () {
-                    var rowAmount = parseFloat($(this).attr('amount')) || 0;
-                    if (rowAmount < minAmount || rowAmount > maxAmount) {
-                        $(this).hide();
-                    }
-                });
-            } else if (selectedFilter === "date") {
-                var fromDate = new Date($('#date-from').val());
-                var toDate = new Date($('#date-to').val());
-                $('#bill_table tbody tr').each(function () {
-                    var rowDate = new Date($(this).attr('date'));
-                    if (rowDate < fromDate || rowDate > toDate) {
-                        $(this).hide();
-                    }
-                });
-            } else if (selectedFilter === "text") {
-                var searchText = $('#text-search').val().toLowerCase();
-                $('#bill_table tbody tr').each(function () {
-                    var forWhat = $(this).find('td:nth-child(3)').text().toLowerCase();
-                    if (!forWhat.includes(searchText)) {
-                        $(this).hide();
-                    }
-                });
+        
+                // Amount filter
+                let rowAmount = parseFloat(row.attr('amount')) || 0;
+                if (rowAmount < minAmount || rowAmount > maxAmount) {
+                    match = false;
+                }
+        
+                // Date filter
+                let rowDate = new Date(row.attr('date'));
+                if ((fromDate && rowDate < fromDate) || (toDate && rowDate > toDate)) {
+                    match = false;
+                }
+        
+                // Text search filter
+                let rowText = row.find('td:nth-child(3)').text().toLowerCase();
+                if (searchText && !rowText.includes(searchText)) {
+                    match = false;
+                }
+        
+                if (!match) {
+                    row.hide();
+                }
+            });
+        }
+        
+        // Attach event listeners
+        $('#payer-select, #amount-min, #amount-max, #date-from, #date-to, #text-search').on('input change', applyFilters);
+        
+        function toggleClearButton() {
+            let filters = [
+                $("#payer-select").val(),
+                $("#amount-min").val(),
+                $("#amount-max").val(),
+                $("#date-from").val(),
+                $("#date-to").val(),
+                $("#text-search").val()
+            ];
+    
+            if (filters.some(value => $.trim(value) !== "")) {
+                $("#btn-bill-clear").show();  // Show button
+            } else {
+                $("#btn-bill-clear").hide();  // Hide button
             }
         }
     
-        // apply filter on change
-        $('#payer-select, #amount-min, #amount-max, #date-from, #date-to, #text-search').on('input change', applyFilters);
+        // Run function on filter change
+        $("#bill-search input, #bill-search select").on("input change", toggleClearButton);
     
-        // clear filters
+        // Run function on page load (hides button initially)
+        toggleClearButton();
+
+        // Clear filters button
         $('#btn-bill-clear').click(function () {
-            $('#bill_table tbody tr').show(200);
-            $('#filter-type').val("");
-            $('.filter-option').hide();
-        });
-    
-        // filter selected
-        $('#filter-type').change(function () {
-            $('.filter-option').hide();
-            var selectedFilter = $(this).val();
-            if (selectedFilter) {
-                $('#' + selectedFilter + '-filter').show();
-            }
+            $('#payer-select, #amount-min, #amount-max, #date-from, #date-to, #text-search').val('');
+            $("#btn-bill-clear").hide();
             applyFilters();
         });
     });
@@ -194,40 +215,29 @@
         <div id="bill-search" style="display: none; padding-top: 10px;">
             <form class="form-inline mt-2">
                 <div class="form-group mr-sm-2">
-                    <label for="filter-type" class="mr-sm-2">Select Filter</label>
-                    <select id="filter-type" class="form-control custom-select">
-                        <option value="">-- Select --</option>
-                        <option value="date">Date Range</option>
-                        <option value="payer">Payer</option>
-                        <option value="amount">Amount Range</option>`
-                        <option value="text">Title search</option>
-                    </select>
-                </div>
-
-                <div id="date-filter" class="form-group mr-sm-2 filter-option" style="display: none;">
                     <label for="date-from" class="mr-sm-2">From</label>
                     <input type="date" id="date-from" class="form-control">
                     <label for="date-to" class="mr-sm-2 ml-2">To</label>
                     <input type="date" id="date-to" class="form-control">
                 </div>
-
-                <div id="payer-filter" class="form-group mr-sm-2 filter-option" style="display: none;">
+        
+                <div class="form-group mr-sm-2">
                     <label for="payer-select" class="mr-sm-2">Payer</label>
                     {{ bill_form.payer(id="payer-select", class="form-control custom-select") | safe }}
                 </div>
-
-                <div id="amount-filter" class="form-group mr-sm-2 filter-option" style="display: none;">
+        
+                <div class="form-group mr-sm-2">
                     <label for="amount-min" class="mr-sm-2">Min</label>
                     <input type="number" id="amount-min" class="form-control" style="width: 100px;">
                     <label for="amount-max" class="mr-sm-2 ml-2">Max</label>
                     <input type="number" id="amount-max" class="form-control" style="width: 100px;">
                 </div>
-
-                <div id="text-filter" class="form-group mr-sm-2 filter-option" style="display: none;">
+        
+                <div class="form-group mr-sm-2">
                     <label for="text-search" class="mr-sm-2">Search</label>
                     <input type="text" id="text-search" class="form-control" placeholder="Search 'For what'...">
                 </div>
-
+        
                 <div class="form-group">
                     <button id="btn-bill-clear" type="button" class="btn btn-secondary">Clear Filters</button>
                 </div>
