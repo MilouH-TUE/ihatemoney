@@ -13,10 +13,10 @@
 
     // focus on first field when adding a bill
     $("#bill-form").on('shown.bs.modal', function(){
-        $(this).find('#what').focus();
+            $(this).find('#what').focus();
     });
 
-    // ask for confirmation before removing a user
+    // ask for confirmation before removing an user
     $('.action.delete').each(function(){
         var link = $(this).find('button');
         link.click(function(){
@@ -48,21 +48,20 @@
     confirm_action(".delete-bill", { exclude_classes: "action delete", add_classes: "btn btn-sm" });
 
     $(document).ready(function () {
-        let payerSelect = document.getElementById("payer-select");
         let blankOption = document.createElement("option");
         blankOption.value = "";
         blankOption.textContent = "";
-        payerSelect.insertBefore(blankOption, payerSelect.firstChild);
-        payerSelect.value = "";
+        $('#payer-select').prepend(blankOption);
+        $('#payer-select').val("");
 
         $('#toggle-filters').click(function () {
             const filterDiv = $('#bill-search');
             if (filterDiv.is(':visible')) {
                 filterDiv.hide();
-                $(this).html('▼ Show Filters');
+                $(this).html('Show Filters');
             } else {
                 filterDiv.show();
-                $(this).html('▲ Hide Filters');
+                $(this).html('Hide Filters');
             }
         });
     
@@ -128,14 +127,10 @@
                 $("#btn-bill-clear").hide();  // Hide button
             }
         }
-    
-        // Run function on filter change
-        $("#bill-search input, #bill-search select").on("input change", toggleClearButton);
-    
-        // Run function on page load (hides button initially)
         toggleClearButton();
+    
+        $("#bill-search input, #bill-search select").on("input change", toggleClearButton);
 
-        // Clear filters button
         $('#btn-bill-clear').click(function () {
             $('#payer-select, #amount-min, #amount-max, #date-from, #date-to, #text-search').val('');
             $("#btn-bill-clear").hide();
@@ -210,7 +205,7 @@
 
     {% if bills.total > 0 %}
 
-        <div id="toggle-filters">▼ Show Filters</div>
+        <div id="toggle-filters">Show Filters</div>
 
         <div id="bill-search" style="display: none; padding-top: 10px;">
             <form class="form-inline mt-2">
