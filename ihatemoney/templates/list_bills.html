@@ -1,13 +1,14 @@
 {% extends "sidebar_table_layout.html" %}
 
-{%- macro weighted_bill_amount(bill, weights, currency=bill.original_currency, amount=bill.amount) %}
-    {{ amount|currency(currency) }}
-    {%- if weights != 1.0 %}
-        ({{ _("%(amount)s each", amount=(amount / weights)|currency(currency)) }})
-    {%- endif -%}
+{%- macro weighted_bill_amount(bill, weights, currency=bill.original_currency, amount=bill.amount) %} 
+    {{ amount|currency(currency) }} 
+    {%- if weights != 1.0 %} 
+        ({{ _("%(amount)s each", amount=(amount / weights)|currency(currency)) }}) 
+    {%- endif -%} 
 {% endmacro -%}
 
 {% block title %} - {{ g.project.name }}{% endblock %}
+
 {% block js %}
     {% if add_bill %} $('#new-bill > a').click(); {% endif %}
 
@@ -105,7 +106,7 @@
     
         // filter selected
         $('#filter-type').change(function () {
-            $('.filter-option').hide();
+            $('.filter-option').show();  // This will make all filter sections visible when a filter type is selected
             var selectedFilter = $(this).val();
             if (selectedFilter) {
                 $('#' + selectedFilter + '-filter').show();
