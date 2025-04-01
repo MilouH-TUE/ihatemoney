@@ -180,6 +180,15 @@ body {
 
 /* Other */
 
+#toggle-filters {
+  text-align: center;
+  cursor: pointer;
+  padding: 5px 0;
+  border-top: 1px solid #8f9296;;
+  border-bottom: 1px solid #8f9296;;
+  color: #6c757d;
+}
+
 #bills {
   color: black;
 }
