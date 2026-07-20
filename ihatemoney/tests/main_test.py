@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 
 from sqlalchemy import orm
 from werkzeug.security import check_password_hash
+import pytest
 
 from ihatemoney import models
 from ihatemoney.currency_convertor import CurrencyConverter
@@ -13,6 +14,10 @@ from ihatemoney.manage import (
     generate_config,
     get_project_count,
     password_hash,
+)
+from ihatemoney.utils import (
+    eval_arithmetic_expression,
+    get_owers_label,
 )
 from ihatemoney.run import load_configuration
 from ihatemoney.tests.common.ihatemoney_testcase import BaseTestCase, IhatemoneyTestCase
@@ -293,6 +298,223 @@ class TestModels(IhatemoneyTestCase):
         assert "raclette@notmyidea.org" in result5.output
 
 
+class TestBillFiltering(IhatemoneyTestCase):
+    def test_filter_by_payer(self):
+        """Test filtering by payer ID"""
+        self.post_project("raclette")
+
+        # add members
+        self.client.post("/raclette/members/add", data={"name": "Alice"})
+        self.client.post("/raclette/members/add", data={"name": "Bob"})
+
+        # create bills
+        self.client.post(
+            "/raclette/add",
+            data={
+                "date": "2024-03-01",
+                "what": "Cheese",
+                "payer": 1,
+                "payed_for": [1, 2],
+                "bill_type": "Expense",
+                "amount": "15.0",
+            },
+        )
+        self.client.post(
+            "/raclette/add",
+            data={
+                "date": "2024-03-05",
+                "what": "Wine",
+                "payer": 2,
+                "payed_for": [1, 2],
+                "bill_type": "Expense",
+                "amount": "25.0",
+            },
+        )
+
+        # alice paid for cheese
+        bills = models.Bill.query.filter(models.Bill.payer_id == 1).all()
+        assert len(bills) == 1
+        assert bills[0].what == "Cheese"
+
+        # bob paid for wine
+        bills = models.Bill.query.filter(models.Bill.payer_id == 2).all()
+        assert len(bills) == 1
+        assert bills[0].what == "Wine"
+
+    def test_filter_by_amount_range(self):
+        """Test filtering by amount range"""
+        self.post_project("raclette")
+
+        # add members
+        self.client.post("/raclette/members/add", data={"name": "Alice"})
+        self.client.post("/raclette/members/add", data={"name": "Bob"})
+
+        # create bills
+        self.client.post(
+            "/raclette/add",
+            data={
+                "date": "2024-03-01",
+                "what": "Cheese",
+                "payer": 1,
+                "payed_for": [1, 2],
+                "bill_type": "Expense",
+                "amount": "15.0",
+            },
+        )
+        self.client.post(
+            "/raclette/add",
+            data={
+                "date": "2024-03-05",
+                "what": "Wine",
+                "payer": 2,
+                "payed_for": [1, 2],
+                "bill_type": "Expense",
+                "amount": "25.0",
+            },
+        )
+
+        # only wine is more than 20
+        bills = models.Bill.query.filter(models.Bill.amount >= 20).all()
+        assert len(bills) == 1
+        assert bills[0].what == "Wine"
+
+        # only cheese is less than 20
+        bills = models.Bill.query.filter(models.Bill.amount <= 20).all()
+        assert len(bills) == 1
+        assert bills[0].what == "Cheese"
+
+    def test_filter_by_date_range(self):
+        """Test filtering by date range"""
+        self.post_project("raclette")
+
+        # add members
+        self.client.post("/raclette/members/add", data={"name": "Alice"})
+        self.client.post("/raclette/members/add", data={"name": "Bob"})
+
+        # create bills
+        self.client.post(
+            "/raclette/add",
+            data={
+                "date": "2024-03-01",
+                "what": "Cheese",
+                "payer": 1,
+                "payed_for": [1, 2],
+                "bill_type": "Expense",
+                "amount": "15.0",
+            },
+        )
+        self.client.post(
+            "/raclette/add",
+            data={
+                "date": "2024-03-05",
+                "what": "Wine",
+                "payer": 2,
+                "payed_for": [1, 2],
+                "bill_type": "Expense",
+                "amount": "25.0",
+            },
+        )
+
+        # wine is March 5th
+        bills = models.Bill.query.filter(models.Bill.date >= "2024-03-02").all()
+        assert len(bills) == 1
+        assert bills[0].what == "Wine"
+
+        # cheese is March 1st
+        bills = models.Bill.query.filter(models.Bill.date <= "2024-03-04").all()
+        assert len(bills) == 1
+        assert bills[0].what == "Cheese"
+
+    def test_filter_by_search_term(self):
+        """Test filtering by search query"""
+        self.post_project("raclette")
+
+        # add members
+        self.client.post("/raclette/members/add", data={"name": "Alice"})
+        self.client.post("/raclette/members/add", data={"name": "Bob"})
+
+        # create bills
+        self.client.post(
+            "/raclette/add",
+            data={
+                "date": "2024-03-01",
+                "what": "Cheese",
+                "payer": 1,
+                "payed_for": [1, 2],
+                "bill_type": "Expense",
+                "amount": "15.0",
+            },
+        )
+        self.client.post(
+            "/raclette/add",
+            data={
+                "date": "2024-03-05",
+                "what": "Wine",
+                "payer": 2,
+                "payed_for": [1, 2],
+                "bill_type": "Expense",
+                "amount": "25.0",
+            },
+        )
+
+        bills = models.Bill.query.filter(models.Bill.what.ilike("%Cheese%")).all()
+        assert len(bills) == 1
+        assert bills[0].what == "Cheese"
+
+        bills = models.Bill.query.filter(models.Bill.what.ilike("%Che%")).all()
+        assert len(bills) == 1
+        assert bills[0].what == "Cheese"
+
+        bills = models.Bill.query.filter(models.Bill.what.ilike("%Pizza%")).all()
+        assert len(bills) == 0
+
+    def test_filter_combination(self):
+        """Test filtering by multiple criteria"""
+
+        self.post_project("raclette")
+
+        # add members
+        self.client.post("/raclette/members/add", data={"name": "Alice"})
+        self.client.post("/raclette/members/add", data={"name": "Bob"})
+
+        # create bills
+        self.client.post(
+            "/raclette/add",
+            data={
+                "date": "2024-03-01",
+                "what": "Cheese",
+                "payer": 1,
+                "payed_for": [1, 2],
+                "bill_type": "Expense",
+                "amount": "15.0",
+            },
+        )
+        self.client.post(
+            "/raclette/add",
+            data={
+                "date": "2024-03-05",
+                "what": "Wine",
+                "payer": 2,
+                "payed_for": [1, 2],
+                "bill_type": "Expense",
+                "amount": "25.0",
+            },
+        )
+
+        # only alice's cheese should match
+        bills = models.Bill.query.filter(
+            models.Bill.payer_id == 1, models.Bill.amount <= 20
+        ).all()
+        assert len(bills) == 1
+        assert bills[0].what == "Cheese"
+
+        # no bills match
+        bills = models.Bill.query.filter(
+            models.Bill.payer_id == 2, models.Bill.amount <= 20
+        ).all()
+        assert len(bills) == 0
+
+
 class TestEmailFailure(IhatemoneyTestCase):
     def test_creation_email_failure_smtp(self):
         self.login("raclette")
@@ -360,6 +582,27 @@ class TestEmailFailure(IhatemoneyTestCase):
             )
             # Check that we are still on the same page (no redirection)
             assert "Invite people to join this project" in resp.data.decode("utf-8")
+
+
+class TestDefaultHashMethod(IhatemoneyTestCase):
+    PASSWORD_HASH_METHOD = None
+    PASSWORD_HASH_SALT_LENGTH = None
+
+    def test_project_creation(self):
+        self.create_project("raclette")
+        resp = self.login("raclette")
+        assert (
+            "<title>I Hate Money — Account manager - raclette</title>"
+            in resp.data.decode("utf-8")
+        )
+
+    def test_project_creation_post(self):
+        self.post_project("raclette")
+        resp = self.login("raclette")
+        assert (
+            "<title>I Hate Money — Account manager - raclette</title>"
+            in resp.data.decode("utf-8")
+        )
 
 
 class TestCaptcha(IhatemoneyTestCase):
@@ -469,3 +712,20 @@ class TestCurrencyConverter:
             # is mocking EVERY instance of the class method. Too bad.
             rates = CurrencyConverter.get_rates(self.converter)
         assert rates == {CurrencyConverter.no_currency: 1}
+
+
+class TestUtils:
+    def test_eval_arithmetic_expression(self):
+        assert eval_arithmetic_expression("32.3") == 32.3
+        assert eval_arithmetic_expression("-(3+2/4*5-2)") == -3.5
+        with pytest.raises(ValueError):
+            eval_arithmetic_expression("32.3/")
+        with pytest.raises(ValueError):
+            eval_arithmetic_expression("coucouc")
+
+    def test_get_owers_label(self):
+        assert get_owers_label(['A', 'B'], ['A', 'B']) == ('everyone', None)
+        assert get_owers_label(['A', 'B'], ['A', 'B', 'C']) == ('everyone', None)
+        assert get_owers_label(['A', 'B'], ['C']) == ('list', ['C'])
+        assert get_owers_label(['A', 'B', 'C'], ['A', 'B']) == ('list', ['A', 'B'])
+        assert get_owers_label(['A', 'B', 'C', 'D'], ['A', 'B']) == ('list', ['A', 'B'])
